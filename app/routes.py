@@ -7,6 +7,8 @@ import logging
 
 bp = Blueprint('api', __name__)
 
+# register users
+
 @bp.route('/register', methods=['POST'])
 def register():
     logging.info("Register route called")
@@ -32,6 +34,8 @@ def register():
     except Exception as e:
         logging.error(f"Error in register route: {str(e)}")
         return jsonify({"message": "An error occurred"}), 500
+    
+# login users
 
 @bp.route('/login', methods=['POST'])
 def login():
@@ -42,6 +46,8 @@ def login():
         return jsonify(access_token=access_token), 200
     return jsonify({"message": "Invalid username or password"}), 401
 
+# show list of users requires admin token(timeout functionality)
+
 @bp.route('/users', methods=['GET'])
 @jwt_required()
 @admin_required
@@ -49,8 +55,7 @@ def get_users():
     users = User.query.all()
     return jsonify([{"id": user.id, "username": user.username, "email": user.email, "role": user.role.value} for user in users]), 200
 
-
-    # Api tested till here all working 
+# update specific user information using slug requires admin token(timeout functionality)
 
 @bp.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
@@ -58,20 +63,59 @@ def get_users():
 def update_user(user_id):
     user = User.query.get_or_404(user_id)
     data = request.get_json()
-    user.username = data.get('username', user.username)
-    user.email = data.get('email', user.email)
-    user.active = data.get('active', user.active)
-    db.session.commit()
-    return jsonify({"message": "User updated successfully"}), 200
+    
+    # Update all fields if they are present in the request
+    if 'username' in data:
+        user.username = data['username']
+    if 'first_name' in data:
+        user.first_name = data['first_name']
+    if 'last_name' in data:
+        user.last_name = data['last_name']
+    if 'email' in data:
+        user.email = data['email']
+    if 'password' in data:
+        user.password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+    if 'role' in data:
+        user.role = UserRole(data['role'])
+    if 'active' in data:
+        user.active = data['active']
+    
+    try:
+        db.session.commit()
+        return jsonify({"message": "User updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"An error occurred: {str(e)}"}), 500
+    
+
+    # Api tested till here all working 
 
 @bp.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 @admin_required
 def delete_user(user_id):
-    user = User.query.get_or_404(user_id)
-    db.session.delete(user)
-    db.session.commit()
-    return jsonify({"message": "User deleted successfully"}), 200
+    # Get the user to be deleted
+    user_to_delete = User.query.get_or_404(user_id)
+    
+    # Get the current user (the admin performing the delete operation)
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
+    
+    # Check if the user to be deleted is an admin
+    if user_to_delete.role == UserRole.ADMIN:
+        return jsonify({"message": "Admin cannot delete another admin user"}), 403
+    
+    # Check if the user is trying to delete themselves
+    if current_user.id == user_to_delete.id:
+        return jsonify({"message": "Admin cannot delete themselves"}), 403
+    
+    try:
+        db.session.delete(user_to_delete)
+        db.session.commit()
+        return jsonify({"message": "User deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"An error occurred: {str(e)}"}), 500
 
 @bp.route('/reset-password', methods=['POST'])
 def reset_password():

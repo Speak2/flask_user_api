@@ -59,6 +59,7 @@ This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user mana
     "email": "string"
     // role is set to user by default
     // "role"="ADMIN" to specifically set to ADMIN ***strictly uppercase***
+    I need to check this part again
   }
   ```
 
@@ -88,8 +89,12 @@ This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user mana
   ```json
   {
     "username": "string",
+    "first_name":"string",
+    "last_name": "string",
     "email": "string",
-    "active": boolean
+    "active": boolean,     
+    "password": "string",
+    "role":"enum"     // strictly follow 'Admin' or 'User' (case sensitive)
   }
   ```
 
