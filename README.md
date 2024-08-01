@@ -1,6 +1,24 @@
 # Flask User API
 
-This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user management.
+This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user management. This is a Flask-based User Management API that provides functionality for user registration, authentication, and management. It uses Flask-SMOREST for API documentation and Swagger UI integration.
+
+## Features
+
+- User registration
+- User login with JWT authentication
+- Password reset
+- User management (for admin users)
+- Swagger UI for API documentation and testing
+
+## Technologies Used
+
+- Flask
+- Flask-SQLAlchemy
+- Flask-Migrate
+- Flask-JWT-Extended
+- Flask-Bcrypt
+- Flask-SMOREST
+- PostgreSQL
 
 ## Setup
 
@@ -59,7 +77,7 @@ This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user mana
     "email": "string"
     // role is set to user by default
     // "role"="ADMIN" to specifically set to ADMIN ***strictly uppercase***
-    I need to check this part again
+    //I need to check this part again
   }
   ```
 
@@ -92,7 +110,7 @@ This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user mana
     "first_name":"string",
     "last_name": "string",
     "email": "string",
-    "active": boolean,     
+    "active": "boolean",     
     "password": "string",
     "role":"enum"     // strictly follow 'Admin' or 'User' (case sensitive)
   }

@@ -3,12 +3,18 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
+from flask_smorest import Api
 from config import Config
+from flask_smorest import abort
+from config import CustomApi
 
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
 bcrypt = Bcrypt()
+api = CustomApi()
+
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -18,8 +24,9 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     bcrypt.init_app(app)
-
-    from app import routes
-    app.register_blueprint(routes.bp)
+    api.init_app(app)
+    
+    from app.routes import bp as api_bp
+    api.register_blueprint(api_bp)
 
     return app
