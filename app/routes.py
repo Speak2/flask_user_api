@@ -6,53 +6,80 @@ from app.models import User, UserRole
 from app.schemas import UserSchema, LoginSchema, PasswordResetSchema
 from app.utils import admin_required
 from sqlalchemy.exc import SQLAlchemyError
+from flask import request, jsonify, current_app
 import logging
 
 bp = Blueprint('users', __name__, description='User management operations')
 
+# @bp.route('/register')
+# class Register(MethodView):
+#     @bp.arguments(UserSchema)
+#     @bp.response(201, UserSchema, description="User registered successfully")
+#     @bp.response(400, description="Bad request")
+#     @bp.response(409, description="User already exists")
+#     @bp.response(422, description="Validation error")
+#     def post(self, user_data):
+#         logging.info(f"Register route called with data: {user_data}")
+#         try:
+#             if User.query.filter_by(username=user_data['username']).first():
+#                 logging.warning(f"Registration attempt with existing username: {user_data['username']}")
+#                 abort(409, message="Username already exists")
+#             if User.query.filter_by(email=user_data['email']).first():
+#                 logging.warning(f"Registration attempt with existing email: {user_data['email']}")
+#                 abort(409, message="Email already exists")
+            
+#             role = user_data.get('role', 'User')
+#             if role not in UserRole.__members__:
+#                 logging.warning(f"Registration attempt with invalid role: {role}")
+#                 abort(400, message="Invalid role")
+#             role_enum = UserRole[role]
+            
+#             hashed_password = bcrypt.generate_password_hash(user_data['password']).decode('utf-8')
+#             new_user = User(
+#                 username=user_data['username'],
+#                 first_name=user_data['first_name'],
+#                 last_name=user_data['last_name'],
+#                 password=hashed_password,
+#                 email=user_data['email'],
+#                 role=role_enum
+#             )
+#             db.session.add(new_user)
+#             db.session.commit()
+#             logging.info(f"User created successfully: {new_user.username}")
+#             return new_user, 201
+#         except SQLAlchemyError as e:
+#             db.session.rollback()
+#             logging.error(f"Database error during user registration: {str(e)}")
+#             abort(500, message="An error occurred while accessing the database")
+#         except Exception as e:
+#             logging.error(f"Unexpected error in register route: {str(e)}")
+#             abort(500, message="An unexpected error occurred")
+
 @bp.route('/register')
 class Register(MethodView):
-    @bp.arguments(UserSchema)
-    @bp.response(201, UserSchema, description="User registered successfully")
-    @bp.response(400, description="Bad request")
-    @bp.response(409, description="User already exists")
-    @bp.response(422, description="Validation error")
-    def post(self, user_data):
-        logging.info(f"Register route called with data: {user_data}")
+    def post(self):
+        user_data = request.get_json()
+        
+        # Create new user with given data
+        hashed_password = bcrypt.generate_password_hash(user_data['password']).decode('utf-8')
+        new_user = User(
+            username=user_data['username'],
+            first_name=user_data['first_name'],
+            last_name=user_data['last_name'],
+            password=hashed_password,
+            email=user_data['email'],
+            role=UserRole[user_data.get('role', 'User')]  # Default to 'User' role if not provided
+        )
+        
         try:
-            if User.query.filter_by(username=user_data['username']).first():
-                logging.warning(f"Registration attempt with existing username: {user_data['username']}")
-                abort(409, message="Username already exists")
-            if User.query.filter_by(email=user_data['email']).first():
-                logging.warning(f"Registration attempt with existing email: {user_data['email']}")
-                abort(409, message="Email already exists")
-            
-            role = user_data.get('role', 'User')
-            if role not in UserRole.__members__:
-                logging.warning(f"Registration attempt with invalid role: {role}")
-                abort(400, message="Invalid role")
-            role_enum = UserRole[role]
-            
-            hashed_password = bcrypt.generate_password_hash(user_data['password']).decode('utf-8')
-            new_user = User(
-                username=user_data['username'],
-                first_name=user_data['first_name'],
-                last_name=user_data['last_name'],
-                password=hashed_password,
-                email=user_data['email'],
-                role=role_enum
-            )
             db.session.add(new_user)
             db.session.commit()
-            logging.info(f"User created successfully: {new_user.username}")
-            return new_user, 201
-        except SQLAlchemyError as e:
+            return jsonify({"message": "User registered successfully"}), 201
+        except SQLAlchemyError:
             db.session.rollback()
-            logging.error(f"Database error during user registration: {str(e)}")
-            abort(500, message="An error occurred while accessing the database")
-        except Exception as e:
-            logging.error(f"Unexpected error in register route: {str(e)}")
-            abort(500, message="An unexpected error occurred")
+            return jsonify({"message": "Database error occurred"}), 500
+        except Exception:
+            return jsonify({"message": "Unexpected error occurred"}), 500
 
 @bp.route('/login')
 class Login(MethodView):
