@@ -6,6 +6,8 @@ from app.models import User, UserRole
 from app.schemas import UserSchema, LoginSchema, PasswordResetSchema
 from app.utils import admin_required 
 from flask import jsonify
+from marshmallow import Schema, fields
+import re
 
 bp = Blueprint('users', __name__, description='User management operations')
 
@@ -57,6 +59,29 @@ class Users(MethodView):
     @bp.response(422, description="Signature verification failed", example={"message":"Unauthorized token"})
     def get(self):
         return User.query.all()
+    
+def is_email(value):
+    email_regex = re.compile(r"[^@]+@[^@]+\.[^@]+")
+    return email_regex.match(value) is not None
+
+@bp.route('/user/<string:identifier>')
+class UserSearch(MethodView):
+    @jwt_required()
+    @admin_required
+    @bp.response(200, UserSchema)
+    @bp.alt_response(404, description="User not found")
+    @bp.doc(description="Search for a user by email or username. Admin only.")
+    def get(self, identifier):
+        if is_email(identifier):
+            user = User.query.filter(User.email == identifier).first()
+        else:
+            user = User.query.filter(User.username == identifier).first()
+
+        if not user:
+            abort(404, message="User not found")
+        
+        return user
+
 
 #update user or delete user
 @bp.route('/users/<int:user_id>')
