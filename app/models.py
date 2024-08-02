@@ -3,8 +3,8 @@ from datetime import datetime
 from enum import Enum
 
 class UserRole(Enum):
-    ADMIN = 'Admin'
-    USER = 'User'
+    ADMIN = 'ADMIN'
+    USER = 'USER'
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)

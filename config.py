@@ -1,5 +1,4 @@
 import os
-from flask_smorest import Api
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key'
@@ -29,10 +28,3 @@ class Config:
             }
         }
     }
-
-# Custom API class to override default error responses
-class CustomApi(Api):
-    DEFAULT_ERROR_RESPONSE_NAME = None
-
-    def handle_http_exception(self, error):
-        return error
