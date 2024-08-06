@@ -5,8 +5,7 @@ from app import db, bcrypt
 from app.models import User, UserRole
 from app.schemas import UserSchema, LoginSchema,UserUpdateSchema,ResetPasswordSchema
 from app.utils import admin_required 
-from flask import jsonify 
-import re  
+from flask import jsonify  
 from datetime import datetime, timedelta
 from app import db, bcrypt 
 import secrets
@@ -190,7 +189,11 @@ class UserResource(MethodView):
         for key, value in user_data.items():
             if key == 'role' and current_user.role != UserRole.ADMIN and current_user.role!=UserRole.USER:
                 abort(403, message="Only admins can change user roles")
-            setattr(user_to_update, key, value)
+            elif key == 'password':
+                hashed_password = bcrypt.generate_password_hash(value).decode('utf-8')
+                user_to_update.password_hash = hashed_password
+            else:
+                setattr(user_to_update, key, value)
 
         db.session.commit()
         return user_to_update
@@ -308,7 +311,10 @@ class ResetPassword(MethodView):
     @bp.arguments(ResetPasswordSchema)
     @bp.response(200, description="Password reset successfully")
     @bp.alt_response(400, description="Invalid link or password")
+    @bp.alt_response(401, description="Password must be at least 8 characters long.")
+    @bp.alt_response(402, description="Password has been used recently. Please choose a different password.")
     @bp.alt_response(404, description="User not found or token expired")
+    @bp.alt_response(500, description="An error occurred while resetting the password.")
     def post(self, reset_password_data):
         reset_link = reset_password_data['reset_link']
         new_password = reset_password_data['new_password']
@@ -323,10 +329,13 @@ class ResetPassword(MethodView):
         user = User.query.filter_by(reset_token=token).first()
         if not user or user.reset_token_expiry < datetime.utcnow():
             abort(404, message="Invalid or expired token")
+
+        if len(new_password) < 8:
+            abort(401, description="Password must be at least 8 characters long.")
         
         # Check password history
         if self.is_password_used(user, new_password):
-            abort(400, message="Password has been used recently. Please choose a different password.")
+            abort(402, message="Password has been used recently. Please choose a different password.")
         
         # Update password
         hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
@@ -353,97 +362,3 @@ class ResetPassword(MethodView):
     def add_to_password_history(self, user, hashed_password):
         new_history = PasswordHistory(user_id=user.id, password=hashed_password)
         db.session.add(new_history)
-
-# Note: Ensure to handle these cases in your frontend:
-# - When token mismatches, return not found
-# - When using the same password, return bad request
- 
-# @bp.route("/forget-password")
-# class ForgetPassword(MethodView):
-#     @bp.doc(
-#         summary="Forget password api",
-#         description="""\n
-#         This endpoint allows users to reset their forgotten password using their username or email. 
-#         It generates a token, which the user must use along with a new password to change their 
-#         password by hitting the reset password API.
-#         \n""",
-#     ) 
-#     @bp.arguments(ForgetPasswordSchema)
-#     @bp.response(200, description="Password reset link generated successfully")
-#     @bp.alt_response(404, description="User not found")
-#     def post(self, forget_password_data):
-#         identifier = forget_password_data['identifier']
-#         user = User.query.filter((User.username == identifier) | (User.email == identifier)).first()
-#         if not user:
-#             abort(404, message="User not found")
-        
-#         # Generate a secure random token
-#         token = secrets.token_hex(16)  # 32 character string
-        
-#         # Store the token and its expiry (e.g., 1 hour from now) in the user's record
-#         user.reset_token = token
-#         user.reset_token_expiry = datetime.utcnow() + timedelta(hours=1)
-        
-#         try:
-#             db.session.commit()
-#         except SQLAlchemyError as e:
-#             db.session.rollback()
-#             abort(500, message="An error occurred while generating the reset token.")
-        
-#         # Return the token directly
-#         return {"message": "Password reset link generated successfully", "reset_token": token}
-
-# @bp.route("/reset-password")
-# class ResetPassword(MethodView):
-#     @bp.doc(
-#         summary="Reset passoword",
-#         description="""\n
-#         This endpoint allows users to reset their password using a "forgot password" token. 
-#         The new password must be at least 8 characters long and must not match any of the 
-#         user's last five passwords.
-#         \n""",
-#     ) 
-#     @bp.arguments(ResetPasswordSchema)
-#     @bp.response(200, description="Password reset successfully")
-#     @bp.alt_response(400, description="Invalid token or password")
-#     @bp.alt_response(404, description="User not found or token expired")
-#     def post(self, reset_password_data):
-#         token = reset_password_data['token']
-#         new_password = reset_password_data['new_password']
-        
-#         user = User.query.filter_by(reset_token=token).first()
-#         if not user or user.reset_token_expiry < datetime.utcnow():
-#             abort(404, message="Invalid or expired token")
-        
-#         # Check password history
-#         if self.is_password_used(user, new_password):
-#             abort(400, message="Password has been used recently. Please choose a different password.")
-        
-#         # Update password
-#         hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
-#         user.password = hashed_password
-#         user.reset_token = None
-#         user.reset_token_expiry = None
-        
-#         # Add to password history
-#         self.add_to_password_history(user, hashed_password)
-        
-#         try:
-#             db.session.commit()
-#         except SQLAlchemyError as e:
-#             db.session.rollback()
-#             abort(500, message="An error occurred while resetting the password.")
-        
-#         return {"message": "Password reset successfully"}
-    
-#     def is_password_used(self, user, new_password):
-#         # Check the last 5 passwords
-#         recent_passwords = PasswordHistory.query.filter_by(user_id=user.id).order_by(PasswordHistory.created_at.desc()).limit(5).all()
-#         return any(bcrypt.check_password_hash(history.password, new_password) for history in recent_passwords)
-    
-#     def add_to_password_history(self, user, hashed_password):
-#         new_history = PasswordHistory(user_id=user.id, password=hashed_password)
-#         db.session.add(new_history)
-
-        # when token missmatch returns not found
-        # when use same password returns bad request

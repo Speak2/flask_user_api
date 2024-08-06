@@ -47,9 +47,13 @@ This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user mana
    pip install -r requirements.txt
    ```
 
-4. Set up the PostgreSQL database and update the `SQLALCHEMY_DATABASE_URI` in `config.py` with your database credentials for config file reference use the `config-sample.txt` file.
+4. Set up the PostgreSQL database and update the database credentials in `config.py` with your database credentials for config file reference use the `config-sample.txt` file. copy paste the config-sample.txt file into config.py and use your own credentials.
    ```python
-   'postgresql://username:password@localhost/dbname'
+   # Database configuration
+    DB_HOST = os.environ.get('DB_HOST') or 'localhost'
+    DB_USER = os.environ.get('DB_USER') or 'database-username'
+    DB_PASSWORD = os.environ.get('DB_PASSWORD') or 'user-password'
+    DB_NAME = os.environ.get('DB_NAME') or 'database-name'
    ```
 
 5. Set the FLASK_APP environment variable:
@@ -79,7 +83,7 @@ http://127.0.0.1:5000/swagger-ui
 - `GET /users`: Get specific users by their email or username (admin only)
 - `PUT /users/<user_id>`: Update a user
 - `DELETE /users/<user_id>`: Delete a user 
-- `POST /forget-password`: Generates reset password token
+- `POST /forget-password`: Generates reset password link
 - `POST /reset-password`: Reset a user's password
 
 For detailed information about request/response formats and authentication requirements, please refer to the Swagger UI documentation.
@@ -504,56 +508,64 @@ Users can delete their own account using their own JWT, while admins can delete 
 
 Generate a password reset token.
 
-- **URL**: `/forget-password`
+- **URL**: `/forget-password/<string:identifier>`
 - **Method**: `POST`
 - **Auth required**: No
 
-### Request Body
-
-```json
-{
-  "identifier": "string" (email or username)
-}
-```
+ 
 
 ### Success Response
 
 - **Code**: 200 OK
 - **Content**: `{"message": "Password reset link generated successfully", "reset_token": "string"}`
 
-```json
-{
-  "message": "Password reset link generated successfully",
-  "reset_token": "string"
-}
-```
+  ```json
+  {
+    "message": "Password reset link generated successfully",
+    "reset_token": "string"
+  }
+  ```
+
+
+### Error Response
+
 - **Code**: 404 Not Found
 - **Content**: `{"message": "Invalid or expired token"}`
 
-```json
-{
-  "code": 404,
-  "message": "Invalid or expired token",
-  "status": "Not Found"
-}
-```
-
-### Error Response
+  ```json
+  {
+    "code": 404,
+    "message": "Invalid or expired token",
+    "status": "Not Found"
+  }
+  ```
 
 - **Code**: 405 Not Found
 - **Content**: `{"message": "User not found"}`
 
-```json
-{
-  "code": 405,
-  "message": "User not found",
-  "status": "Not Found"
-}
-```
+  ```json
+  {
+    "code": 405,
+    "message": "User not found",
+    "status": "Not Found"
+  }
+  ```
+
+- **Code**: 500 Not Found
+- **Content**: `{"message": "An error occurred while generating the reset token."}`
+
+  ```json
+  {
+    "code": 500,
+    "message": "An error occurred while generating the reset token.",
+    "status": "Error"
+  }
+  ```
 
 ## Reset Password
 
-Reset a user's password using a reset token.
+Reset a user's password using a reset link.
+It checks the new password with the last 5 passwords used(excluding the first password to set up the account).User cannot change the password to last 5 password used.
 
 - **URL**: `/reset-password`
 - **Method**: `POST`
@@ -575,6 +587,25 @@ Reset a user's password using a reset token.
 
 ### Error Responses
 
+
+- **Code**: 400 Bad Request
+- **Content**: `{"message": "Invalid link."}`
+
+
+- **Code**: 401 Not Found
+- **Content**: `{"message": "Password must be at least 8 characters long."}`
+
+```json
+{ "message": "Password must be at least 8 characters long." }
+```
+
+- **Code**: 402 Bad Request
+- **Content**: `{"message": "Password has been used recently. Please choose a different password."}`
+
+```json
+{ "message": "Password has been used recently. Please choose a different password." }
+```
+
 - **Code**: 404 Not Found
 - **Content**: `{"message": "User not found"}`
 
@@ -586,21 +617,18 @@ Reset a user's password using a reset token.
 }
 ```
 
+
 - **Code**: 405 Not Found
 - **Content**: `{"message": "Invalid or expired token"}`
 
 ```json
 {
-  "code": 404,
+  "code": 405,
   "message": "Invalid or expired token",
   "status": "Not Found"
 }
 ```
 
-- **Code**: 400 Bad Request
-- **Content**: `{"message": "Password has been used recently. Please choose a different password."}`
-
----
 
 Note: All endpoints may return a 500 Internal Server Error if there's an unexpected issue with the server or database operations.
 

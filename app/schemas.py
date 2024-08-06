@@ -25,6 +25,7 @@ class UserUpdateSchema(Schema):
     last_name = fields.Str(validate=validate.Length(min=1, max=64))
     email = fields.Email()
     role = fields.Str(validate=validate.OneOf([UserRole.USER.value, UserRole.ADMIN.value]))
+    password = fields.Str(validate=validate.Length(min=8, max=128), load_only=True)
 
     # Ensure at least one field is provided
     def validate(self, data, **kwargs):
@@ -32,10 +33,7 @@ class UserUpdateSchema(Schema):
             raise ValidationError("At least one field must be provided for update.")
         return data
     
-class ForgetPasswordSchema(Schema):
-    identifier = fields.Str(required=True, validate=validate.Length(min=3))
  
-
 class ResetPasswordSchema(Schema):
     reset_link = fields.String(required=True)
     new_password = fields.String(required=True,validate=validate.Length(min=8))
