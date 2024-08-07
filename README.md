@@ -47,7 +47,7 @@ This is a RESTful API built with Flask, SQLAlchemy, and PostgreSQL for user mana
    pip install -r requirements.txt
    ```
 
-4. Set up the PostgreSQL database and update the database credentials in `config.py` with your database credentials for config file reference use the `config-sample.txt` file. copy paste the config-sample.txt file into config.py and use your own credentials.
+4. Set up the PostgreSQL database and update the database credentials in `config.py` with your database credentials for config file reference use the `config-sample.txt` file. copy paste the config-sample.txt file into config.py and use your own credentials. note: kindly use a new database it will automatically generate the database and tables
    ```python
    # Database configuration
     DB_HOST = os.environ.get('DB_HOST') or 'localhost'
